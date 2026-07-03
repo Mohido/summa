@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Summa Cum Laude GPA Calculator</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #16213a;
+    --border: #33415c;
+    --text: #e6ecf5;
+    --muted: #94a3b8;
+    --accent: #4f9dff;
+    --accent-2: #22c55e;
+    --danger: #ef4444;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 2rem; font-size: 0.95rem; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  h2 { font-size: 1.05rem; margin-top: 0; margin-bottom: 1rem; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  input[type="text"], input[type="number"], select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.9rem;
+  }
+  input[type="number"] { max-width: 90px; }
+  button {
+    background: var(--accent);
+    color: #061224;
+    border: none;
+    border-radius: 6px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.3rem 0.55rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .file-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  #pdf-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted); }
+  #pdf-status.error { color: var(--danger); }
+  #pdf-status.ok { color: var(--accent-2); }
+  .add-row-form { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; align-items: center; }
+  .add-row-form input[type="text"] { flex: 1 1 auto; min-width: 140px; }
+  .summary-cards { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .card { flex: 1 1 200px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .card .label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .card .value { font-size: 1.7rem; font-weight: 700; margin-top: 0.3rem; }
+  .card.gpa .value { color: var(--accent-2); }
+  .weighted-cell { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .empty-hint { color: var(--muted); font-size: 0.85rem; padding: 0.75rem 0; }
+  .footer {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Summa Cum Laude GPA Calculator</h1>
+  <p class="subtitle">
+    Upload your transcript PDF (TeljesitesiLap) - your grades are matched to the summa cum laude subjects automatically. You can then edit, add, or remove subjects freely.
+  </p>
+  <p class="subtitle">
+    This site runs fully on your browser. So your PDF never really leaves your device.
+    No server communication involved...
+  </p>
+
+  <!-- 1. PDF upload: first thing students see -->
+  <section>
+    <h2>1. Upload Transcript PDF</h2>
+    <div class="file-row">
+      <input type="file" id="pdf-input" accept="application/pdf" />
+      <button type="button" id="parse-pdf-btn" disabled>Parse PDF</button>
+      <button type="button" id="reset-btn" class="secondary">Reset Grades</button>
+    </div>
+    <div id="pdf-status"></div>
+  </section>
+
+  <!-- 2. Subjects with editable grades -->
+  <section>
+    <h2>2. Subjects &amp; Grades</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Credits</th>
+          <th>Grade (1–5)</th>
+          <th>Weighted</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="subjects-tbody"></tbody>
+    </table>
+    <div id="subjects-empty" class="empty-hint" hidden>No subjects — add one below.</div>
+    <form class="add-row-form" id="add-subject-form">
+      <input type="text" id="new-subject-name" placeholder="Subject name" required />
+      <input type="number" id="new-subject-credits" placeholder="Credits" min="0.5" step="0.5" required />
+      <button type="submit">Add Subject</button>
+    </form>
+  </section>
+
+  <!-- 3. Result -->
+  <section>
+    <h2>3. Result</h2>
+    <div class="summary-cards">
+      <div class="card gpa">
+        <div class="label">GPA (credit-weighted)</div>
+        <div class="value" id="gpa-value">&mdash;</div>
+      </div>
+      <div class="card">
+        <div class="label">Graded Credits</div>
+        <div class="value" id="credits-value">&mdash;</div>
+      </div>
+    </div>
+    <p class="empty-hint">GPA = &Sigma;(credits &times; grade) / &Sigma;(credits), counting only subjects that have a grade.</p>
+  </section>
+
+  <footer class="footer">
+    <span>&copy; 2026 Mohammed Al-Mahdawi</span>
+    <span>&middot;</span>
+    <a href="https://github.com/Mohido/semmelweis-summa-cum-lauda/issues" target="_blank" rel="noopener">Questions or feedback? Open an issue on GitHub</a>
+  </footer>
+</div>
+
+<script type="module">
+  import { PDFParse } from 'https://cdn.jsdelivr.net/npm/pdf-parse@latest/dist/pdf-parse/web/pdf-parse.es.js';
+  PDFParse.setWorker('https://cdn.jsdelivr.net/npm/pdf-parse@latest/dist/pdf-parse/web/pdf.worker.mjs');
+
+  // ---------- data ----------
+
+  // Summa-cum-laude subjects based on https://sehok.hu/diplomaatlag-kalkulator/
+  // [name, credits]
+  const DEFAULT_SUBJECTS = [
+    ["Orvosi biológia", 3],
+    ["Orvosi kémia", 6],
+    ["Genetika és genomika", 2],
+    ["Immunológia", 2],
+    ["Fül-orr-gégészet", 2],
+    ["Bőrgyógyászat", 4],
+    ["Klinikai genetika", 2],
+    ["Onkológia", 4],
+    ["Ortopédia", 5],
+    ["Pulmonológia", 4],
+    ["Radiológia", 3],
+    ["Urológia", 3],
+    ["Igazságügyi orvostan", 2],
+    ["Szemészet", 4],
+    ["Szájsebészet és fogászat", 2],
+    ["Makroszkópos anatómia II", 10],
+    ["Orvosi biofizika II", 3],
+    ["Molekuláris sejtbiológia II", 5],
+    ["Mikroszkópos anatómia II", 4],
+    ["Orvosi biokémia II", 5],
+    ["Orvosi élettan II", 11],
+    ["Farmakológia II", 5],
+    ["Patológia II", 8],
+    ["Transzlációs medicina és kórélettan II", 3],
+    ["Orvosi mikrobiológia II", 3],
+    ["Belgyógyászat", 8],
+    ["Sebészet", 6],
+    ["Gyermekgyógyászat", 6],
+    ["Szülészet-nőgyógyászat", 4],
+    ["Neurológia", 3],
+    ["Pszichiátria", 3],
+    // Thesis is given as a single credit unlike the semmelweis online calculator
+    ["Szakdolgozat", 20],
+  ];
+
+  // Hungarian grade word -> numeric value
+  const GRADE_MAP = [
+    { word: "Jeles", value: 5 },
+    { word: "Jó", value: 4 },
+    { word: "Közepes", value: 3 },
+    { word: "Elégséges", value: 2 },
+    { word: "Elégtelen", value: 1 },
+  ];
+
+  // Single source of truth for the UI.
+  // Each subject: { id, name, credits, grade } — grade is 1..5 or null (not graded).
+  let nextId = 1;
+  let subjects = DEFAULT_SUBJECTS.map(([name, credits]) => ({
+    id: nextId++, name, credits, grade: null,
+  }));
+
+  // ---------- grade helpers (from main.html) ----------
+
+  /* Maps the grade word to value */
+  function gradeValue(word) {
+    const g = GRADE_MAP.find(g => g.word === word);
+    return g ? g.value : undefined;
+  }
+
+  /* Returns max grade from the grades list. The list are words. */
+  function maxGrade(grades) {
+    return grades.reduce(
+      (max, current) => {
+        if (gradeValue(current) == undefined)
+          return max;
+        if (gradeValue(max) == undefined) // max can be undefined, we overwrite it with current.
+          return current;
+        return gradeValue(current) > gradeValue(max) ? current : max;
+      },
+      grades[0]
+    );
+  }
+
+  // ---------- subject matching ----------
+
+  /* Lowercase + collapse whitespace, so PDF text and our names compare cleanly */
+  function normalize(text) {
+    return text.toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  /* Finds the default subject whose name appears in the extracted text.
+     Longest names are checked first so e.g. "Klinikai genetika" is not
+     shadowed by a shorter name it contains. Returns the subject or null. */
+  function findSubject(text) {
+    const norm = normalize(text);
+    const byLongestName = [...subjects].sort((a, b) => b.name.length - a.name.length);
+    return byLongestName.find(s => norm.includes(normalize(s.name))) || null;
+  }
+
+  // ---------- PDF parsing (algorithm from main.html) ----------
+
+  const pdfInput = document.getElementById("pdf-input");
+  const parseBtn = document.getElementById("parse-pdf-btn");
+  const pdfStatus = document.getElementById("pdf-status");
+
+  function setStatus(message, kind = "") {
+    pdfStatus.textContent = message;
+    pdfStatus.className = kind; // "", "ok" or "error"
+  }
+
+  pdfInput.addEventListener("change", () => {
+    parseBtn.disabled = !pdfInput.files.length;
+    setStatus("");
+  });
+
+  parseBtn.addEventListener("click", async () => {
+    const file = pdfInput.files[0];
+    if (!file) {
+      setStatus("No PDF file loaded...", "error");
+      return;
+    }
+
+    parseBtn.disabled = true;
+    setStatus("Reading PDF...");
+
+    // the pdf parser only takes a url, so we create a temporary one
+    const fileURL = window.URL.createObjectURL(file);
+    const parser = new PDFParse({ url: fileURL });
+    try {
+      const tables = await parser.getTable();
+      let applied = 0;
+
+      for (const page of tables.pages) {
+        // We assume a single table on each page
+        for (const row of page.tables[0]) {
+          const subjectText = row[1]
+                              .replace("és fejlődéstan","")
+                              .replace('.', '')
+                              .replace("\n", " ")
+                              .replace(/\s+/g, " ")
+                              .trim();
+          const grades = row[row.length - 1].split("\n"); // Aláírva, Jó, Jeles, etc.
+          const grade = gradeValue(maxGrade(grades));
+          if (grade == undefined)
+            continue;
+          
+          console.log("Reading Subject {", subjectText, "} With Grade {", grade, "}");
+          // Project the row onto our summa-cum-laude subjects; others are irrelevant.
+          const subject = findSubject(subjectText);
+          if (subject) {
+            subject.grade = grade;
+            applied++;
+          }
+        }
+      }
+
+      if (applied > 0)
+        setStatus(`Matched ${applied} subject(s) from the PDF.`, "ok");
+      else
+        setStatus("No summa-cum-laude subjects were found in the PDF.", "error");
+      render();
+    } catch (err) {
+      setStatus("Failed to read PDF: " + err.message, "error");
+    } finally {
+      await parser.destroy();
+      window.URL.revokeObjectURL(fileURL);
+      parseBtn.disabled = false;
+    }
+  });
+
+  // ---------- rendering ----------
+
+  const tbody = document.getElementById("subjects-tbody");
+
+  function render() {
+    renderSubjects();
+    renderResult();
+  }
+
+  function renderSubjects() {
+    tbody.replaceChildren();
+    document.getElementById("subjects-empty").hidden = subjects.length > 0;
+
+    for (const subject of subjects) {
+      const tr = document.createElement("tr");
+      tr.appendChild(makeCell(subject.name));
+      tr.appendChild(makeCell(subject.credits));
+      tr.appendChild(makeGradeCell(subject));
+
+      const weighted = subject.grade != null ? subject.credits * subject.grade : null;
+      const weightedCell = makeCell(weighted != null ? weighted : "—");
+      weightedCell.classList.add("weighted-cell");
+      tr.appendChild(weightedCell);
+
+      tr.appendChild(makeRemoveCell(subject));
+      tbody.appendChild(tr);
+    }
+  }
+
+  function makeCell(content) {
+    const td = document.createElement("td");
+    td.textContent = content;
+    return td;
+  }
+
+  /* Dropdown to edit a subject's grade: "—" (no grade) or 1..5 */
+  function makeGradeCell(subject) {
+    const select = document.createElement("select");
+
+    const none = new Option("—", "");
+    select.appendChild(none);
+    for (let value = 1; value <= 5; value++)
+      select.appendChild(new Option(value, value));
+    select.value = subject.grade != null ? subject.grade : "";
+
+    select.addEventListener("change", () => {
+      subject.grade = select.value === "" ? null : Number(select.value);
+      render();
+    });
+
+    const td = document.createElement("td");
+    td.appendChild(select);
+    return td;
+  }
+
+  function makeRemoveCell(subject) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "danger";
+    button.textContent = "Remove";
+    button.addEventListener("click", () => {
+      subjects = subjects.filter(s => s.id !== subject.id);
+      render();
+    });
+
+    const td = document.createElement("td");
+    td.appendChild(button);
+    return td;
+  }
+
+  // ---------- GPA ----------
+
+  function renderResult() {
+    let weightedSum = 0;
+    let creditSum = 0;
+    for (const s of subjects) {
+      if (s.grade == null) continue;
+      weightedSum += s.credits * s.grade;
+      creditSum += s.credits;
+    }
+
+    document.getElementById("gpa-value").textContent =
+      creditSum > 0 ? (weightedSum / creditSum).toFixed(3) : "—";
+    document.getElementById("credits-value").textContent =
+      creditSum > 0 ? creditSum : "—";
+  }
+
+  // ---------- add / reset ----------
+
+  document.getElementById("add-subject-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("new-subject-name").value.trim();
+    const credits = parseFloat(document.getElementById("new-subject-credits").value);
+    if (!name || isNaN(credits)) return;
+
+    subjects.push({ id: nextId++, name, credits, grade: null });
+    e.target.reset();
+    document.getElementById("new-subject-name").focus();
+    render();
+  });
+
+  document.getElementById("reset-btn").addEventListener("click", () => {
+    nextId = 1;
+    subjects = DEFAULT_SUBJECTS.map(([name, credits]) => ({
+      id: nextId++, name, credits, grade: null,
+    }));
+    setStatus("");
+    render();
+  });
+
+  // ---------- init ----------
+  render();
+</script>
+</body>
+</html>
