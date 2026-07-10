@@ -94,11 +94,20 @@
 <div class="container">
   <h1>Summa Cum Laude GPA Calculator</h1>
   <p class="subtitle">
-    Upload your transcript PDF (TeljesitesiLap) - your grades are matched to the summa cum laude subjects automatically. You can then edit, add, or remove subjects freely.
+    Upload your transcript PDF (TeljesitesiLap) - your grades are matched to the summa cum laude subjects automatically.
+    You can then edit, add, or remove subjects freely.
   </p>
   <p class="subtitle">
     This site runs fully on your browser. So your PDF never really leaves your device.
-    No server communication involved...
+    No server communication involved... TeljesitesiLap can be downloaded from your Neptun account.
+  </p>
+
+  <p class="subtitle">
+    <b>Summa Cum Laude</b> is mainly based on the <b>UNWEIGHTED</b> average.
+  </p>
+
+  <p class="subtitle">
+    
   </p>
 
   <!-- 1. PDF upload: first thing students see -->
@@ -143,6 +152,10 @@
         <div class="label">GPA (credit-weighted)</div>
         <div class="value" id="gpa-value">&mdash;</div>
       </div>
+      <div class="card gpa">
+        <div class="label">GPA (unweighted)</div>
+        <div class="value" id="gpa-unweighted-value">&mdash;</div>
+      </div>
       <div class="card">
         <div class="label">Graded Credits</div>
         <div class="value" id="credits-value">&mdash;</div>
@@ -167,7 +180,7 @@
   // Summa-cum-laude subjects based on https://sehok.hu/diplomaatlag-kalkulator/
   // [name, credits]
   const DEFAULT_SUBJECTS = [
-    ["Orvosi biológia", 3],
+    ["Sejttan", 3],
     ["Orvosi kémia", 6],
     ["Genetika és genomika", 2],
     ["Immunológia", 2],
@@ -200,6 +213,9 @@
     ["Pszichiátria", 3],
     // Thesis is given as a single credit unlike the semmelweis online calculator
     ["Szakdolgozat", 20],
+    ["írásbeli tesztvizsga érdemjegye", 0],
+    ["szóbeli vizsga érdemjegye", 0],
+    ["gyakorlati vizsga érdemjegye", 0]
   ];
 
   // Hungarian grade word -> numeric value
@@ -402,14 +418,20 @@
   function renderResult() {
     let weightedSum = 0;
     let creditSum = 0;
+    let unweightedSum = 0;
+    let count = 0;
     for (const s of subjects) {
       if (s.grade == null) continue;
       weightedSum += s.credits * s.grade;
+      unweightedSum += s.grade;
+      count += 1;
       creditSum += s.credits;
     }
 
     document.getElementById("gpa-value").textContent =
       creditSum > 0 ? (weightedSum / creditSum).toFixed(3) : "—";
+    document.getElementById("gpa-unweighted-value").textContent =
+      creditSum > 0 ? (unweightedSum / count).toFixed(3) : "—";
     document.getElementById("credits-value").textContent =
       creditSum > 0 ? creditSum : "—";
   }
